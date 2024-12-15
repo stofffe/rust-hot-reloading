@@ -12,41 +12,41 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
 
-pub trait GameCallbacks {
+pub trait Callbacks {
     fn start(&mut self);
     fn update(&mut self);
     fn end(&mut self);
 }
 
-pub fn run_game<T: GameCallbacks>(callbacks: T) {
+pub fn run_game<T: Callbacks>(callbacks: T) {
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
     event_loop.set_control_flow(ControlFlow::Wait);
 
     // NOTE: HOT_RELOAD
     #[cfg(debug_assertions)]
-    let game = GameWrapper::<T>::new(callbacks);
-
-    #[cfg(not(debug_assertions))]
-    let game = callbacks;
+    let callbacks = DllCallbacks::new(callbacks);
 
     // app
-    let mut app = WinitApp { window: None, game };
+    let mut app = App {
+        window: None,
+        callbacks,
+    };
 
     event_loop.run_app(&mut app).unwrap();
 }
 
-pub struct WinitApp<T: GameCallbacks> {
+pub struct App<T: Callbacks> {
     pub window: Option<Window>,
 
     #[cfg(debug_assertions)]
-    pub game: crate::GameWrapper<T>,
+    pub callbacks: crate::DllCallbacks<T>,
 
     #[cfg(not(debug_assertions))]
-    pub game: T,
+    pub callbacks: T,
 }
 
-impl<T: GameCallbacks> ApplicationHandler for WinitApp<T> {
+impl<T: Callbacks> ApplicationHandler for App<T> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         self.window = Some(
             event_loop
@@ -68,26 +68,26 @@ impl<T: GameCallbacks> ApplicationHandler for WinitApp<T> {
                         #[cfg(debug_assertions)]
                         if code == KeyCode::KeyH {
                             println!("reload");
-                            self.game.hot_reload();
+                            self.callbacks.hot_reload();
                         }
                         // NOTE: HOT_RELOAD
                         #[cfg(debug_assertions)]
                         if code == KeyCode::KeyR {
                             println!("restart");
-                            self.game.hot_restart();
+                            self.callbacks.hot_restart();
                         }
                     }
                 }
             }
             WindowEvent::RedrawRequested => {
-                // reload game
+                // reload callbacks
                 // NOTE: HOT_RELOAD
                 #[cfg(debug_assertions)]
-                if self.game.dll_changed() {
-                    self.game.hot_reload();
+                if self.callbacks.dll_changed() {
+                    self.callbacks.hot_reload();
                 }
 
-                self.game.update();
+                self.callbacks.update();
 
                 self.window.as_ref().unwrap().request_redraw();
             }

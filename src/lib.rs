@@ -1,17 +1,17 @@
-use engine::GameCallbacks;
+use engine::Callbacks;
 
 #[repr(C)]
 #[derive(Clone, Default)]
-pub struct Game {
-    pub tick: i32,
+pub struct Game {}
+
+impl Game {
+    #[no_mangle]
+    pub fn new() -> Self {
+        Self {}
+    }
 }
 
-#[no_mangle]
-pub fn create_game() -> Game {
-    Game::default()
-}
-
-impl GameCallbacks for Game {
+impl Callbacks for Game {
     #[no_mangle]
     fn start(&mut self) {
         println!("start")
@@ -19,8 +19,7 @@ impl GameCallbacks for Game {
 
     #[no_mangle]
     fn update(&mut self) {
-        self.tick += 1;
-        // println!("tick {}", self.tick);
+        println!("update");
     }
 
     #[no_mangle]

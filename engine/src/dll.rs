@@ -7,23 +7,24 @@ use notify::Watcher;
 
 const DLL_NAME: &str = "libhot_reload.dylib";
 
+/// Dll Api for Callbacks
 #[derive(WrapperApi)]
 pub struct DllApi<T> {
-    create_game: fn() -> T,
+    new: fn() -> T,
     start: fn(game: &mut T),
     update: fn(game: &mut T),
     end: fn(game: &mut T),
 }
 
 /// Wrapper for Game + dll reloading
-pub struct GameWrapper<T> {
+pub struct DllCallbacks<T> {
     pub callbacks: T,
     pub dll: Container<DllApi<T>>,
     pub dll_watcher: notify::FsEventWatcher,
     pub dll_change_channel: mpsc::Receiver<Result<notify::Event, notify::Error>>,
 }
 
-impl<T> crate::GameCallbacks for GameWrapper<T> {
+impl<T> crate::Callbacks for DllCallbacks<T> {
     fn start(&mut self) {
         self.dll.start(&mut self.callbacks);
     }
@@ -37,13 +38,13 @@ impl<T> crate::GameCallbacks for GameWrapper<T> {
     }
 }
 
-impl<T> GameWrapper<T> {
+impl<T> DllCallbacks<T> {
     // NOTE: the callbacks are not used
     // since they will be loaded from the DLL
     pub fn new(_callbacks: T) -> Self {
         let dll: Container<DllApi<T>> =
             unsafe { Container::load(DLL_NAME) }.expect("Could not open library or load symbols");
-        let game = dll.create_game();
+        let game = dll.new();
 
         let (tx, rx) = mpsc::channel();
 
@@ -84,6 +85,6 @@ impl<T> GameWrapper<T> {
     pub fn hot_restart(&mut self) {
         self.dll =
             unsafe { Container::load(DLL_NAME) }.expect("Could not open library or load symbols");
-        self.callbacks = self.dll.create_game();
+        self.callbacks = self.dll.new();
     }
 }
