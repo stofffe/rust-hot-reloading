@@ -17,7 +17,7 @@ pub struct DllApi<T> {
 
 /// Wrapper for Game + dll reloading
 pub struct GameWrapper<T> {
-    pub game: T,
+    pub callbacks: T,
     pub dll: Container<DllApi<T>>,
     pub dll_watcher: notify::FsEventWatcher,
     pub dll_change_channel: mpsc::Receiver<Result<notify::Event, notify::Error>>,
@@ -25,15 +25,15 @@ pub struct GameWrapper<T> {
 
 impl<T> crate::GameCallbacks for GameWrapper<T> {
     fn start(&mut self) {
-        self.dll.start(&mut self.game);
+        self.dll.start(&mut self.callbacks);
     }
 
     fn update(&mut self) {
-        self.dll.update(&mut self.game);
+        self.dll.update(&mut self.callbacks);
     }
 
     fn end(&mut self) {
-        self.dll.end(&mut self.game);
+        self.dll.end(&mut self.callbacks);
     }
 }
 
@@ -53,7 +53,7 @@ impl<T> GameWrapper<T> {
             .unwrap();
 
         Self {
-            game,
+            callbacks: game,
             dll,
             dll_watcher: watcher,
             dll_change_channel: rx,
@@ -73,7 +73,7 @@ impl<T> GameWrapper<T> {
     /// reload dll file
     ///
     /// keep game state
-    pub fn reload(&mut self) {
+    pub fn hot_reload(&mut self) {
         self.dll =
             unsafe { Container::load(DLL_NAME) }.expect("Could not open library or load symbols");
     }
@@ -81,9 +81,9 @@ impl<T> GameWrapper<T> {
     /// reload dll file
     ///
     /// reset game state
-    pub fn restart(&mut self) {
+    pub fn hot_restart(&mut self) {
         self.dll =
             unsafe { Container::load(DLL_NAME) }.expect("Could not open library or load symbols");
-        self.game = self.dll.create_game();
+        self.callbacks = self.dll.create_game();
     }
 }

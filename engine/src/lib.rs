@@ -1,8 +1,9 @@
 #[macro_use]
 extern crate dlopen_derive;
 
+#[cfg(debug_assertions)]
 mod dll;
-
+#[cfg(debug_assertions)]
 pub use dll::*;
 
 use winit::application::ApplicationHandler;
@@ -23,14 +24,14 @@ pub fn run_game<T: GameCallbacks>(callbacks: T) {
     event_loop.set_control_flow(ControlFlow::Wait);
 
     // NOTE: HOT_RELOAD
+    #[cfg(debug_assertions)]
     let game = GameWrapper::<T>::new(callbacks);
 
+    #[cfg(not(debug_assertions))]
+    let game = callbacks;
+
     // app
-    let mut app = WinitApp {
-        window: None,
-        game,
-        // callbacks: game,
-    };
+    let mut app = WinitApp { window: None, game };
 
     event_loop.run_app(&mut app).unwrap();
 }
@@ -38,8 +39,11 @@ pub fn run_game<T: GameCallbacks>(callbacks: T) {
 pub struct WinitApp<T: GameCallbacks> {
     pub window: Option<Window>,
 
+    #[cfg(debug_assertions)]
     pub game: crate::GameWrapper<T>,
-    // callbacks: T,
+
+    #[cfg(not(debug_assertions))]
+    pub game: T,
 }
 
 impl<T: GameCallbacks> ApplicationHandler for WinitApp<T> {
@@ -61,14 +65,16 @@ impl<T: GameCallbacks> ApplicationHandler for WinitApp<T> {
                 if event.state.is_pressed() {
                     if let PhysicalKey::Code(code) = event.physical_key {
                         // NOTE: HOT_RELOAD
+                        #[cfg(debug_assertions)]
                         if code == KeyCode::KeyH {
                             println!("reload");
-                            self.game.reload();
+                            self.game.hot_reload();
                         }
                         // NOTE: HOT_RELOAD
+                        #[cfg(debug_assertions)]
                         if code == KeyCode::KeyR {
                             println!("restart");
-                            self.game.restart();
+                            self.game.hot_restart();
                         }
                     }
                 }
@@ -76,8 +82,9 @@ impl<T: GameCallbacks> ApplicationHandler for WinitApp<T> {
             WindowEvent::RedrawRequested => {
                 // reload game
                 // NOTE: HOT_RELOAD
+                #[cfg(debug_assertions)]
                 if self.game.dll_changed() {
-                    self.game.reload();
+                    self.game.hot_reload();
                 }
 
                 self.game.update();
