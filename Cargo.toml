@@ -1,4 +1,4 @@
-workspace = { members = ["game"] }
+workspace = { members = ["engine"] }
 
 [package]
 name = "hot-reload"
@@ -8,8 +8,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dlopen = "0.1.8"
-dlopen_derive = "0.1.4"
-notify = "7.0.0"
-winit = "0.30.5"
+# dlopen = "0.1.8"
+# dlopen_derive = "0.1.4"
+# notify = "7.0.0"
+# winit = "0.30.5"
 # libloading = "0.8.6"
+engine = { path = "./engine" }
+
+[lib]
+crate-type = ["rlib", "dylib"]
