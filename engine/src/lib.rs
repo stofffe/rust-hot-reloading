@@ -2,7 +2,6 @@
 extern crate dlopen_derive;
 
 mod dll;
-use std::marker::PhantomData;
 
 pub use dll::*;
 
@@ -18,20 +17,19 @@ pub trait GameCallbacks {
     fn end(&mut self);
 }
 
-pub fn run_game<T: GameCallbacks>() {
+pub fn run_game<T: GameCallbacks>(callbacks: T) {
     let event_loop = EventLoop::new().unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
     event_loop.set_control_flow(ControlFlow::Wait);
 
     // NOTE: HOT_RELOAD
-    let game = GameWrapper::new();
+    let game = GameWrapper::<T>::new(callbacks);
 
     // app
     let mut app = WinitApp {
         window: None,
         game,
         // callbacks: game,
-        a: PhantomData::<T>,
     };
 
     event_loop.run_app(&mut app).unwrap();
@@ -40,9 +38,8 @@ pub fn run_game<T: GameCallbacks>() {
 pub struct WinitApp<T: GameCallbacks> {
     pub window: Option<Window>,
 
-    pub game: crate::GameWrapper,
+    pub game: crate::GameWrapper<T>,
     // callbacks: T,
-    a: PhantomData<T>,
 }
 
 impl<T: GameCallbacks> ApplicationHandler for WinitApp<T> {

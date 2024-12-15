@@ -8,29 +8,22 @@ use notify::Watcher;
 const DLL_NAME: &str = "libhot_reload.dylib";
 
 #[derive(WrapperApi)]
-pub struct DllApi {
-    create_game: fn() -> Game,
-    start: fn(game: &mut Game),
-    update: fn(game: &mut Game),
-    end: fn(game: &mut Game),
-}
-
-// TODO: this has to be raw pointer OR be defined from user code
-//
-// must match Game in dynamic library
-pub struct Game {
-    pub current_tick: i32,
+pub struct DllApi<T> {
+    create_game: fn() -> T,
+    start: fn(game: &mut T),
+    update: fn(game: &mut T),
+    end: fn(game: &mut T),
 }
 
 /// Wrapper for Game + dll reloading
-pub struct GameWrapper {
-    pub game: Game,
-    pub dll: Container<DllApi>,
+pub struct GameWrapper<T> {
+    pub game: T,
+    pub dll: Container<DllApi<T>>,
     pub dll_watcher: notify::FsEventWatcher,
     pub dll_change_channel: mpsc::Receiver<Result<notify::Event, notify::Error>>,
 }
 
-impl crate::GameCallbacks for GameWrapper {
+impl<T> crate::GameCallbacks for GameWrapper<T> {
     fn start(&mut self) {
         self.dll.start(&mut self.game);
     }
@@ -44,10 +37,11 @@ impl crate::GameCallbacks for GameWrapper {
     }
 }
 
-impl GameWrapper {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        let dll: Container<DllApi> =
+impl<T> GameWrapper<T> {
+    // NOTE: the callbacks are not used
+    // since they will be loaded from the DLL
+    pub fn new(_callbacks: T) -> Self {
+        let dll: Container<DllApi<T>> =
             unsafe { Container::load(DLL_NAME) }.expect("Could not open library or load symbols");
         let game = dll.create_game();
 
