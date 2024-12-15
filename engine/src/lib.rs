@@ -13,9 +13,10 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 use winit::window::{Window, WindowId};
 
 pub trait Callbacks {
-    fn start(&mut self);
+    fn init(&mut self);
     fn update(&mut self);
-    fn end(&mut self);
+    fn render(&mut self);
+    fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>);
 }
 
 pub fn run_game<T: Callbacks>(callbacks: T) {
@@ -78,6 +79,9 @@ impl<T: Callbacks> ApplicationHandler for App<T> {
                         }
                     }
                 }
+            }
+            WindowEvent::Resized(size) => {
+                self.callbacks.resize(size);
             }
             WindowEvent::RedrawRequested => {
                 // reload callbacks

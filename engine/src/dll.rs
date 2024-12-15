@@ -11,9 +11,10 @@ const DLL_NAME: &str = "libhot_reload.dylib";
 #[derive(WrapperApi)]
 pub struct DllApi<T> {
     new: fn() -> T,
-    start: fn(game: &mut T),
+    init: fn(game: &mut T),
     update: fn(game: &mut T),
-    end: fn(game: &mut T),
+    render: fn(game: &mut T),
+    resize: fn(game: &mut T, size: winit::dpi::PhysicalSize<u32>),
 }
 
 /// Wrapper for Game + dll reloading
@@ -25,16 +26,20 @@ pub struct DllCallbacks<T> {
 }
 
 impl<T> crate::Callbacks for DllCallbacks<T> {
-    fn start(&mut self) {
-        self.dll.start(&mut self.callbacks);
+    fn init(&mut self) {
+        self.dll.init(&mut self.callbacks);
     }
 
     fn update(&mut self) {
         self.dll.update(&mut self.callbacks);
     }
 
-    fn end(&mut self) {
-        self.dll.end(&mut self.callbacks);
+    fn render(&mut self) {
+        self.dll.render(&mut self.callbacks);
+    }
+
+    fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
+        self.dll.resize(&mut self.callbacks, size);
     }
 }
 
