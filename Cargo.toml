@@ -16,4 +16,4 @@ winit = "0.30.5"
 engine = { path = "./engine" }
 
 [lib]
-crate-type = ["rlib", "dylib"]
+crate-type = ["rlib", "cdylib"]
