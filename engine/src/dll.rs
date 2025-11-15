@@ -1,12 +1,58 @@
 extern crate dlopen;
 
-use std::{fs, path::Path, sync::mpsc};
+use std::{env, fs, path::PathBuf, sync::mpsc};
 
 use dlopen::wrapper::{Container, WrapperApi};
 use notify::Watcher;
 
-const DLL_NAME: &str = "hot_reload_0.dll";
-const DLL_TARGET: &str = "target/debug/hot_reload.dll";
+fn format_dll_input() -> PathBuf {
+    let current_exe = env::current_exe().expect("could not get current exe path");
+    let folder_path = current_exe
+        .parent()
+        .expect("could not get current exe parent folder");
+    let file_name = current_exe
+        .file_stem()
+        .expect("could not get current exe file stem");
+    let file_name = file_name
+        .to_str()
+        .expect("could not convert os string to &str")
+        .replace("-", "_");
+    let path = PathBuf::new()
+        .join(folder_path)
+        .join(dlopen::utils::platform_file_name(file_name));
+
+    println!("{path:?}");
+    path
+}
+
+fn format_dll_output(i: usize) -> PathBuf {
+    let current_exe = env::current_exe().expect("could not get current exe path");
+    let folder_path = current_exe
+        .parent()
+        .expect("could not get current exe parent folder");
+    let file_name = current_exe
+        .file_stem()
+        .expect("could not get current exe file stem");
+    let file_name = file_name
+        .to_str()
+        .expect("could not convert os string to &str")
+        .replace("-", "_");
+    let file_name = format!("{file_name}_{i}");
+
+    PathBuf::new()
+        .join(folder_path)
+        .join(dlopen::utils::platform_file_name(file_name))
+}
+
+fn load_dll<T>(i: usize) -> Container<DllApi<T>> {
+    let input = format_dll_input();
+    let output = format_dll_output(i);
+    println!("input {input:?}");
+    println!("output {output:?}");
+    fs::copy(input, &output).expect("could not copy dll");
+
+    unsafe { Container::load(output) }.expect("Could not open library or load symbols")
+}
 
 /// Dll Api for Callbacks
 #[derive(WrapperApi)]
@@ -53,20 +99,19 @@ impl<T> DllCallbacks<T> {
         let i = 0;
         let dll: Container<DllApi<T>> = load_dll(i);
 
-        // unsafe { Container::load(DLL_NAME) }.expect("Could not open library or load symbols");
-        let game = dll.new();
+        let callbacks = dll.new();
 
         let (tx, rx) = mpsc::channel();
 
-        let mut watcher = notify::recommended_watcher(tx).unwrap();
-        watcher
-            .watch(Path::new(DLL_TARGET), notify::RecursiveMode::NonRecursive)
+        let mut dll_watcher = notify::recommended_watcher(tx).unwrap();
+        dll_watcher
+            .watch(&format_dll_input(), notify::RecursiveMode::NonRecursive)
             .unwrap();
 
         Self {
-            callbacks: game,
+            callbacks,
             dll,
-            dll_watcher: watcher,
+            dll_watcher,
             dll_change_channel: rx,
             i,
         }
@@ -87,38 +132,16 @@ impl<T> DllCallbacks<T> {
     ///
     /// keep game state
     pub fn hot_reload(&mut self) {
-        println!("--- hot_reload ---");
-        // unload current
         self.i += 1;
         self.dll = load_dll(self.i);
-
-        // let target = format_dll_name(self.i);
-        //
-        // // copy
-        // fs::copy(DLL_TARGET, &target).expect("could not copy dll");
-
-        // self.dll =
-        //     unsafe { Container::load(&target) }.expect("Could not open library or load symbols");
     }
 
     /// reload dll file
     ///
     /// reset game state
     pub fn hot_restart(&mut self) {
-        self.dll =
-            unsafe { Container::load(DLL_NAME) }.expect("Could not open library or load symbols");
+        self.i += 1;
+        self.dll = load_dll(self.i);
         self.callbacks = self.dll.new();
     }
-}
-
-fn load_dll<T>(i: usize) -> Container<DllApi<T>> {
-    let target = format_dll_name(i);
-
-    fs::copy(DLL_TARGET, &target).expect("could not copy dll");
-
-    unsafe { Container::load(&target) }.expect("Could not open library or load symbols")
-}
-
-fn format_dll_name(i: usize) -> String {
-    format!("hot_reload_{i}.dll")
 }
